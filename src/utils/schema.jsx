@@ -15,6 +15,8 @@ export const Users = pgTable('users', {
     createBy: varchar('created_by').notNull(),
 
 })
+
+
 export const Records = pgTable('records', {
     id: serial('id').primaryKey(),
     userId: integer('user_id').references(() => Users.id).notNull(),

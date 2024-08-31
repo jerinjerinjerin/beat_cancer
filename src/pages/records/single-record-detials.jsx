@@ -9,7 +9,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import FileUploadModel from "./components/file-upload-model";
 import { useStatecontext } from "../../context";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown from "react-markdown";
 
 const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -58,12 +58,12 @@ const SingleDecordDetials = () => {
   const handleFileUpload = async () => {
     setUploading(true);
     setUploadSuccess(false);
-  
+
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-  
+
     try {
       const base64Data = await readFileAsBase64(file);
-  
+
       const imageParts = [
         {
           inlineData: {
@@ -72,27 +72,27 @@ const SingleDecordDetials = () => {
           },
         },
       ];
-  
+
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash-latest",
       });
-  
+
       const prompt = `You are an expert cancer and any disease diagnosis analyst. Use your knowledge base to answer questions about giving personalized 
         recommended treatments.
         give a detailed treatment plan for me, make it more readable, clear and easy to understand make it paragraphs to make it more readable`;
-  
+
       const results = await model.generateContent([prompt, ...imageParts]);
       const response = await results.response;
       const text = response.text();
-  
+
       setAnalysisResult(text);
-  
+
       const updatedRecordResponse = await updateRecord({
         documentId: state.id,
         analysisResult: text,
         kanbanRecords: "",
       });
-  
+
       setUploadSuccess(true);
       setISModelOpen(false);
       setFile(null);
@@ -110,51 +110,72 @@ const SingleDecordDetials = () => {
 
 
 
-const progressTreatmentPlan = async () => {
-  setProgressing(false)
-
-  const genAI = new GoogleGenerativeAI(geminiApiKey);
-
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest"});
-
-  const prompt = `Your role and goal is to be an that will 
-                be using this treatment plan ${analysisResult} 
-                to create Columns:
-                - Todo: Tasks that need to be started
-                - Doing: Tasks that are in progress
-                - Done: Tasks that are completed
-          
-                Each task should include a brief description. 
-                The tasks should be categorized appropriately based 
-                on the stage of the treatment process.
-          
-                Please provide the results in the following  
-                format for easy front-end display no quotating 
-                or what so ever just pure the structure below:
-
-                {
-                  "columns": [
-                    { "id": "todo", "title": "Todo" },
-                    { "id": "doing", "title": "Work in progress" },
-                    { "id": "done", "title": "Done" }
-                  ],
-                  "tasks": [
-                    { "id": "1", "columnId": "todo", "content": "Example task 1" },
-                    { "id": "2", "columnId": "todo", "content": "Example task 2" },
-                    { "id": "3", "columnId": "doing", "content": "Example task 3" },
-                    { "id": "4", "columnId": "doing", "content": "Example task 4" },
-                    { "id": "5", "columnId": "done", "content": "Example task 5" }
-                  ]
-                }
-                            
-                `;
-
-          const result = await model.generateContent(prompt);
-          const response = await result.response
-          const text = response.text();
-}
+  const processTreatmentPlan = async () => {
+    setProgressing(true);
   
-
+    try {
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+  
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash-latest"
+      });
+  
+      const prompt = `You are an AI expert whose task is to analyze the following treatment plan:
+  
+      ${analysisResult}
+      
+      Based on this analysis, create a Kanban board with the following structure:
+      
+      {
+        "columns": [
+          { "id": "todo", "title": "Todo" },
+          { "id": "doing", "title": "Work in progress" },
+          { "id": "done", "title": "Done" }
+        ],
+        "tasks": [
+          { "id": "1", "columnId": "todo", "content": "Example task 1" },
+          { "id": "2", "columnId": "todo", "content": "Example task 2" },
+          { "id": "3", "columnId": "doing", "content": "Example task 3" },
+          { "id": "4", "columnId": "doing", "content": "Example task 4" },
+          { "id": "5", "columnId": "done", "content": "Example task 5" }
+        ]
+      }
+      
+      Please return ONLY the JSON object, without any additional text, explanation, or comments.`;
+  
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = await response.text();  // Await the text response
+  
+      console.log('Raw response text:', text);  // Debugging: Check the raw response
+  
+      let parsedResponse;
+  
+      try {
+        parsedResponse = JSON.parse(text);  // Parse the JSON response
+      } catch (error) {
+        console.error('Failed to parse JSON:', error);
+        throw new Error('The model response was not in valid JSON format');
+      }
+  
+      const updatedRecord = await updateRecord({
+        documentId: state.id,
+        kanbanRecords: text,
+      });
+  
+      console.log('Updated record response:', updatedRecord);
+  
+      navigate(`/screening-schedules/`, {
+        state: parsedResponse,
+      });
+  
+    } catch (error) {
+      console.error('Error processing treatment plan:', error);
+    } finally {
+      setProgressing(false);
+    }
+  };
+  
 
   return (
     <div className="flex flex-wrap gap-[26px]">
@@ -194,21 +215,27 @@ const progressTreatmentPlan = async () => {
                   <h2 className="text-lg font-semibold text-white">
                     Analysis Result
                   </h2>
-                  <div className="space-y-2"><ReactMarkdown>{analysisResult}</ReactMarkdown></div>
+                  <div className="space-y-2">
+                    <ReactMarkdown>{analysisResult}</ReactMarkdown>
+                  </div>
                 </div>
 
                 <div className="mt-5 grid gap-2 sm:flex">
                   <button
                     type="button"
-                    onClick={() => {}}
-                    className="inline-flex items-center gap-x-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+                    onClick={processTreatmentPlan}
+                    className="inline-flex items-center gap-x-2 rounded-lg border 
+                    border-gray-200 bg-white px-3 py-2 text-sm font-medium 
+                    text-gray-800 shadow-sm hover:bg-gray-50 disabled:pointer-events-none 
+                    disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 
+                    dark:text-white dark:hover:bg-neutral-800"
                   >
                     View Treatment Plan
                     <IconChevronUpRight size={20} />
                     {progressing && (
                       <IconProgress
                         size={10}
-                        className="mr-3 h-5 w-5 text-white animate-spin"
+                        className="mr-3 h-5 w-5 animate-spin text-white"
                       />
                     )}
                   </button>

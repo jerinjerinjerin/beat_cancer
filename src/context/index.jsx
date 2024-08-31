@@ -105,11 +105,12 @@ export const StateContextProvider = ({ children }) => {
         .where(eq(Records.id, documentId))
         .returning();
 
-      setRecords((prevRecords) =>
-        prevRecords.map((record) =>
-          record.id === documentId ? updateRecord[0] : record,
-        ),
-      );
+        setRecords((prevRecords) =>
+          prevRecords.map((record) =>
+            record.id === documentId ? updateRecords[0] : record
+          ),
+        );
+        
     } catch (error) {
       console.error("Error creating record", error);
       return null;

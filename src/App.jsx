@@ -10,6 +10,7 @@ import { useStatecontext } from "./context";
 import { usePrivy } from "@privy-io/react-auth";
 import Profile from "./pages/Profile";
 import SingleDecordDetials from "./pages/records/single-record-detials";
+import ScreeningSchedule from "./pages/ScreeningSchedule";
 
 const App = () => {
   const navigate = useNavigate();
@@ -39,7 +40,10 @@ const App = () => {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/medical-records" element={<MedicalRecord />} />
           <Route path="/medical-records/:id" element={<SingleDecordDetials />} />
-
+          <Route 
+            path="/screening-schedules" 
+            element={<ScreeningSchedule/>}
+          />
         </Routes>
       </div>
     </div>
